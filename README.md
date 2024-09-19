@@ -1,24 +1,24 @@
 v0.1
 
-Disclamer: you can treat this document as my personal opinion. You don't have to agree with this, and feel free to completely disregard all I say. I am looking to be right, my aim is to share.
+Disclaimer: you can treat this document as my personal opinion. You don't have to agree with this, and feel free to completely disregard all I say. I am looking to be right, my aim is to share.
 
 # Intro
 
-Building complex front-end applications is a complex task. Fortunately, there has been a lot of advancements in this area and many patterns emerged that helped to reduce this complexity, maintainance cost, and, as a result, a number of bugs.
+Building complex front-end applications is a complex task. Fortunately, there has been a lot of advancements in this area and many patterns emerged that helped to reduce this complexity, maintenance cost, and, as a result, a number of bugs.
 
 Today, many frontend developers start their journey in a particular framework/library, such as _React_, _Angular_ etc. Working with these frameworks and libraries, they learn library- or framework-specific patterns and practices that, while useful, do not always provide a solid fundamentals for understanding the bigger picture.
 
-This document aims at providing comprehensive guide for reasoning about the frontend application architecture in a framework-independent way.
+This document aims at providing a background for reasoning about the frontend application architecture in a framework-independent way.
 
 When building a frontend application, most of the (technical) complexity lies in **(1)** handling UI component dependencies (as in "this view should update when that button is clicked") and **(2)** reconciling state updates triggered by user actions and business logic.
 
 UI component dependencies usually obey "if and only if" logic:
-- Necessary condition: "component A should only update when component B changes";
-- Sufficient condition: "if component B changes, component A must get updated".
+- Necessary condition: "component `A` should only update when component `B` changes";
+- Sufficient condition: "if component `B` changes, component `A` must get updated".
 
-If you don't respect these rules, you will either have UI that updates too often, resulting in flickering and poor performance; or too seldom, resulting in stale, out-of-sync views.
+If you don't respect these rules, you will either have UI that updates too often, resulting in flickering and poor UX; or too seldom, resulting in stale, out-of-sync views.
 
-To make things worse, you have multiple sources of updates: application business logic and user actions. In a poorly designed frontend application or framework you may encounter the situation when data flows in both directions: from app business logic to the UI component and from the UI component to the app business logic, which easily gets out of control and breeds bugs related to inconsist state.
+To make things worse, you have multiple sources of updates: application business logic and user actions. In a poorly designed frontend application or framework you may encounter the situation when data flows in both directions: from app business logic to the UI component and from the UI component to the app business logic, which easily gets out of control and breeds bugs related to inconsistent state.
 
 
 # Principles
@@ -78,7 +78,7 @@ Making views out of pure function brings many advantages:
 - Easy to develop in isolation, e.g. using tools like _Storybook_ (only requires providing inputs for rendering);
 - Allows results to be cached as long as the inputs remain the same, which is extremely important to avoid unnecessary re-rendering.
 
-The last statement is really important. In case of Elm, the purity is esured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached.
+The last statement is really important. In case of Elm, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached.
 
 TODO: memo
 
@@ -101,7 +101,7 @@ What is important:
 
 ### Always consistent state
 
-One of the most imprtant properties of the state is to be always consistent. I highly recommend [Domain-Driven Design](https://www.amazon.com/gp/product/0321125215) by Eric Evans.
+One of the most important properties of the state is to be always consistent. I highly recommend [Domain-Driven Design](https://www.amazon.com/gp/product/0321125215) by Eric Evans.
 
 Let's consider an example.
 
@@ -127,7 +127,7 @@ Naturally, when `loadingState` is `Success`, you should expect `result` to be fi
 
 This sounds logical and simple, but this is very problematic.
 
-- This datatype just invites inconsitencies. There is nothing that prevents me to set both `result` and `error` or none of those. Consequentially, the task of validating the state and handling inconsistent state fall on the rest of the application;
+- This model just invites inconsistencies. There is nothing that prevents me to set both `result` and `error` or none of those. Consequentially, the task of validating the state and handling inconsistent state fall on the rest of the application;
 - The dependencies between properties might be obvious in such a small example, but, as your state grows, it may become completely unclear which properties depend on each other, it is simply impossible to say what is the valid state looking at the data type;
 - The complexity of the state grows, as you need to declare every property that may ever be non-null on the same data type.
 
@@ -181,15 +181,15 @@ Another argument against having all the state in a single state tree might be a 
 
 However, I would argue that, if you follow the approach explained in "Always consistent state", your state tree, at any point in time, will only include the properties that are valid and required by the currently displayed UI components.
 
-So your state tree will never get more complex than a UI at any single point in time during the application execution, which is the right level of complexity.
+In other words, your state tree will never get more complex than a UI at any single point in time during the application execution, which is the right level of complexity.
 
 ### Anti-corruption layer
 
-This is simple: basically, don't throw the data you don't control directly on your UI components, especially when retrieving the data from the schemaless databases.
+This is simple: basically, don't throw the data you don't control directly on your UI components, especially when retrieving the data from the schema-less databases.
 
 This means: process the data before putting it into the global store, namely:
 - Validate the data. All the fields that are mandatory have to be present and in the correct format;
-- Sanitize the data. If some of the properties are optional, they might be not present in the JSON, sanitizing means you add the property and set it to null;
+- Sanitize the data. For example, if some of the properties are optional, they might be or not present in the JSON, you could make sure the property is always there, but maybe set to null;
 - Impute the missing values: use app defaults, when applicable;
 - Convert into app internal format (e.g. parse datetime from string to a number);
 - Versioning: convert the records from any version to a recent canonical format.
@@ -200,7 +200,7 @@ This means: process the data before putting it into the global store, namely:
 Views may interact with the user, and report the events up. The exact mechanism is irrelevant (_events_ in _React_, _actions_ in _Redux_, _messages_ in _Elm_ etc.). You can make events bubble through components or dispatch events from low-level components directly to _update_ function using _dispatch_ function.
 
 What is important:
-- The event should be self-contained, i.e. carry all the relevant information, such as id of an element selected, text entered etc;
+- The event should be self-contained, i.e. carry all the relevant information, such as id of an element selected, text entered etc.;
 - Events flow from the views up;
 - Events should be processed in a single place, usually called _reducer_ or _update_, a pure function that accepts the event/action + current state and returns the new state;
 - All the data dependencies should be handled here (update field `A` when field `B` changes), keeping all your application logic consolidated in a single place.
