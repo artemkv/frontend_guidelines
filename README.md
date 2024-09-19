@@ -195,7 +195,7 @@ This means: process the data before putting it into the global store, namely:
 - Versioning: convert the records from any version to a recent canonical format.
 
 
-## Pure state update function (aka Reduce)
+## Pure state update function (aka Reducer)
 
 Views may interact with the user, and report the events up. The exact mechanism is irrelevant (_events_ in _React_, _actions_ in _Redux_, _messages_ in _Elm_ etc.). You can make events bubble through components or dispatch events from low-level components directly to _update_ function using _dispatch_ function.
 
@@ -208,6 +208,10 @@ What is important:
 - TODO: only update what needs to be updated, to avoid re-rendering (i.e. don't update refs)
 - TODO: consider using lens
 - TODO: example
+
+### Business logic
+
+It might be quite an obvious thing, but don't put the actual business logic literally inside the reducer. Have a library of functions that do calculations and call those functions. Keep the complexity of a reducer to the minimum (should basically be a large flat `switch`).
 
 
 ## Isolated and well controlled side effects
