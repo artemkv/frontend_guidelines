@@ -78,9 +78,7 @@ Making views out of pure function brings many advantages:
 - Easy to develop in isolation, e.g. using tools like _Storybook_ (only requires providing inputs for rendering);
 - Allows results to be cached as long as the inputs remain the same, which is extremely important to avoid unnecessary re-rendering.
 
-The last statement is really important. In case of Elm, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached.
-
-TODO: memo
+The last statement is really important. In case of Elm, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached (In react, use `memo` to cache components).
 
 ### Container components
 
@@ -173,7 +171,7 @@ Having the complete application state in a single place has a great advantage. I
 
 This is why React is suggesting [lifting state up](https://react.dev/learn/sharing-state-between-components). I find this confusing, as in my opinion, it suggests that the local state should be a default.
 
-I would rather advocate for having all the state on top by default, and exceptionally pushing state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application).
+I would rather advocate for having **all the state on top by default**, and exceptionally pushing state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application).
 
 ### Note on state complexity
 
@@ -205,9 +203,9 @@ What is important:
 - Events should be processed in a single place, usually called _reducer_ or _update_, a pure function that accepts the event/action + current state and returns the new state;
 - All the data dependencies should be handled here (update field `A` when field `B` changes), keeping all your application logic consolidated in a single place.
 
-- TODO: only update what needs to be updated, to avoid re-rendering (i.e. don't update refs)
-- TODO: consider using lens
-- TODO: example
+Hints:
+- Only update what needs to be updated, to avoid re-rendering (i.e. don't update refs, you can use libraries that provide "lens", like `ramda`, see `R.lensPath`, `R.view` and `R.set`) TODO: example
+
 
 ### Business logic
 
@@ -223,6 +221,8 @@ Different frameworks handle it differently: _Angular NgRx_ has _effects_, _Elm_ 
 The important thing is that side effects should interact with the rest of the application by integrating with the unidirectional data flow discussed above.
 
 TODO: examples etc.
+
+My advice is to keep all the effects on the top of the application and avoid handling effects (i.e. using _React hooks_) in the components (keep components pure).
 
 
 ## Exceptions
