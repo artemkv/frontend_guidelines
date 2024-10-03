@@ -1,4 +1,4 @@
-v0.1
+v0.2
 
 Disclaimer: you can treat this document as my personal opinion. You don't have to agree with this, and feel free to completely disregard all I say. I am looking to be right, my aim is to share.
 
@@ -32,23 +32,27 @@ Solving the challenges of complex frontend applications relies on following prin
 
 The good place to start is [Elm architecture](https://guide.elm-lang.org/architecture/). _Elm_ is a purely functional language that resembles _Haskell_ and the architecture it promotes emerges from its purely functional nature.
 
-_Elm_ architecture is not just a fun reading. It has fundamental practical and historical importance, as it has inspired libraries like _Redux_ and, consequently, state management in _React_, _Angular_ and others. Essentially, it is THE architecture for the frontend app and the idea behind the modern frontend libraries.
+_Elm_ architecture is not just a fun reading. It has fundamental practical and historical importance, as it has inspired libraries like _Redux_ (see [Redux Essentials](https://redux.js.org/tutorials/essentials/part-1-overview-concepts)) and, consequently, state management in _React_ (see [Managing State](https://react.dev/learn/managing-state)), _Angular_ (see [@ngrx/store](https://ngrx.io/guide/store)) and others. In my view, it is "The architecture" for the frontend app and the idea behind the modern frontend libraries.
 
-You don't have to follow the _Elm_ architecture strictly, as it can sometimes feel too rigid, but it's important to know when you deviate from this architecture, and be able to articulate the advantages and drawbacks of the alternative solution.
+You don't have to follow the _Elm_ architecture strictly, as it can sometimes feel too rigid, but it's important to know when you deviate from this architecture, and be able to articulate the advantages and drawbacks of an alternative solution. Similarly, it is important to know how the specific techniques (e.g. hooks) fit into this architecture.
 
 
 ## Unidirectional flow of data
 
+The resources mentioned in the previous section do a very good job explaining this concept, so here I will just briefly mention the main flow:
+
+```
 Current State -> View -> Events -> Update -> New State
+```
 
-- The state is the model of your app;
-- This state flows into the views;
-- The views can trigger events;
-- The events bubble to the update function;
-- The update produces the new state;
-- The new state flows into new views.
+- The **state** is the model of your app;
+- This state flows into the **views**;
+- The views can trigger **events**;
+- The events bubble to the **update function**;
+- The update produces the **new state**;
+- The new state flows into **new views** (that need to be re-rendered).
 
-While this looks like a loop, it is actually a spiral: nothing is ever mutated, only the new stuff is created; and all the dependencies are one-way.
+While this looks like a loop, it is actually a spiral (which you can unwind along the timeline): nothing is ever mutated, only the new stuff is created; and all the arrows are one-way (no loops).
 
 We will now look at all the parts in more details.
 
@@ -65,34 +69,36 @@ Example with _React_:
 function Welcome(props) {
   return <div>
     <h1>Hello, {props.name}</h1>
-    <button onclick="clicked_hello">
+    <button onclick={props.clicked_hello}>
         Say hello
     </button>
   </div>;
 }
 ```
 
-Making views out of pure function brings many advantages:
+Making views out of pure functions brings many advantages:
 - Easy to unit-test, if you desire to do so (allows input-output test, although, personally, I would probably not find these tests very useful);
-- Easy to understand, contains minimal logic;
+- Easy to understand, contains minimal logic (ideally, no logic at all);
 - Easy to develop in isolation, e.g. using tools like _Storybook_ (only requires providing inputs for rendering);
-- Allows results to be cached as long as the inputs remain the same, which is extremely important to avoid unnecessary re-rendering.
+- Allows results to be cached as long as the inputs remain the same.
 
-The last statement is really important. In case of Elm, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached (In react, use `memo` to cache components).
+The last statement is really important in order to avoid unnecessary re-rendering. In case of _Elm_, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached.
+
+In react, use [`memo`](https://react.dev/reference/react/memo) to cache components. You don't have to wrap every component in `memo`, just the ones that are heavy.
 
 ### Container components
 
-If, for any reason, you feel that you need to push the state management on a component itself (see below on state), do not mix everything in one place: create a purely representational component and a container component.
+If, for any reason, you feel that you need to push the state management on a component itself (see below on state), do not mix everything in one place: create a purely representational component (no state management, only markup) and a container component (manages state but has no markup).
 
 
 ## Global, consistent, and immutable state
 
 Also known as *model*.
 
-The state can be hosted in the _Redux store_ or simply in the root app component (using state hook, in case of _React_). It doesn't really matter (and you could write your own Redux library in about half an hour).
+The state can be hosted in the _Redux store_ or simply in the root app component (using [state hook](https://react.dev/reference/react/useState), in case of _React_). It doesn't really matter (and you could write your own Redux library in about half an hour).
 
 What is important:
-- State is the most important part of your application. It represents your application business domain and provides the [**Ubiquitous Language**](https://martinfowler.com/bliki/UbiquitousLanguage.html), i.e. the common vocabulary for the team;
+- State is the most important part of your application. The model of the state represents your application business domain and provides the [**Ubiquitous Language**](https://martinfowler.com/bliki/UbiquitousLanguage.html), i.e. the common vocabulary for the team;
 - State must be always consistent, so you should design it in a way that renders it impossible to construct an illegal/inconsistent state (e.g. no null or undefined properties);
 - State must be immutable. The only way to update the state of the application should be by creating a new state from the old state; this, in turn, would require re-executing views to generate new DOM, and update the parts of DOM that have changed, this is a task of a runtime;
 - State flows down into views;
@@ -100,6 +106,8 @@ What is important:
 ### Always consistent state
 
 One of the most important properties of the state is to be always consistent. I highly recommend [Domain-Driven Design](https://www.amazon.com/gp/product/0321125215) by Eric Evans.
+
+(TODO: If I remember correctly, this talk is also great: [The life of a file](https://www.youtube.com/watch?v=XpDsk374LDE))
 
 Let's consider an example.
 
@@ -165,13 +173,13 @@ It is natural for developers to tame complexity by splitting complex things in m
 
 That is correct, the global variables are evil, but global variables are mutable: any part of the application can modify the value of a global variable at any moment.
 
-This is not the case with the approach we are discussing here, where the state is immutable and creation of a new state is localized inside of a _state update function_.
+This is not the case with the approach we are discussing here, where the state is immutable and creation of a new state is localized inside of a _state update function_ (see below).
 
 Having the complete application state in a single place has a great advantage. In many frontend applications, the components are highly dependent. Right now, as I'm typing in the Visual Code editor window, the status bar, a completely separate component, is updating the line length while preview on the right is showing rendered markdown. If we made the text to be stored on a level of an editor component, we would have a hard time keeping the rest of UI in sync.
 
 This is why React is suggesting [lifting state up](https://react.dev/learn/sharing-state-between-components). I find this confusing, as in my opinion, it suggests that the local state should be a default.
 
-I would rather advocate for having **all the state on top by default**, and exceptionally pushing state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application).
+I would rather advocate for having **all the state on top by default**, and exceptionally pushing state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application; the rule of thumb: if you can imagine it as a separate frame, then it can be a new state root).
 
 ### Note on state complexity
 
@@ -183,7 +191,7 @@ In other words, your state tree will never get more complex than a UI at any sin
 
 ### Anti-corruption layer
 
-This is simple: basically, don't throw the data you don't control directly on your UI components, especially when retrieving the data from the schema-less databases.
+This is simple: basically, don't throw the data you don't control directly on your UI components, especially when retrieving the data from the schema-less databases (e.g. _DynamoDB_).
 
 This means: process the data before putting it into the global store, namely:
 - Validate the data. All the fields that are mandatory have to be present and in the correct format;
@@ -195,7 +203,7 @@ This means: process the data before putting it into the global store, namely:
 
 ## Pure state update function (aka Reducer)
 
-Views may interact with the user, and report the events up. The exact mechanism is irrelevant (_events_ in _React_, _actions_ in _Redux_, _messages_ in _Elm_ etc.). You can make events bubble through components or dispatch events from low-level components directly to _update_ function using _dispatch_ function.
+Views may interact with the user, and report the events up. The exact mechanism is irrelevant (callback props in _React_, _actions_ in _Redux_, _messages_ in _Elm_ etc.). You can make events bubble through components or dispatch events from low-level components directly to _update_ function using _dispatch_ function.
 
 What is important:
 - The event should be self-contained, i.e. carry all the relevant information, such as id of an element selected, text entered etc.;
@@ -222,7 +230,7 @@ The important thing is that side effects should interact with the rest of the ap
 
 TODO: examples etc.
 
-My advice is to keep all the effects on the top of the application and avoid handling effects (i.e. using _React hooks_) in the components (keep components pure).
+My advice is to keep all the effects on the top of the application and avoid handling effects (i.e. using _React hooks_) in the components (keep components pure, as discussed above).
 
 
 ## Exceptions
