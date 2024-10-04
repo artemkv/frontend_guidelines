@@ -222,7 +222,7 @@ It might be quite an obvious thing, but don't put the actual business logic lite
 
 ## Isolated and well controlled side effects
 
-The app would not be completely usable if it didn't allow side effects (e.g. loading the data from the backend server). The usual approach is to keep all the side effects is a dedicated place and control them, so that they do spill into the rest of your application, producing hundreds of bugs.
+The app would not be completely usable if it didn't allow side effects (e.g. loading the data from the backend server). The usual approach is to keep all the side effects is a dedicated place and control them, so that they don't spill into the rest of your application, producing hundreds of bugs.
 
 Different frameworks handle it differently: _Angular NgRx_ has _effects_, _Elm_ has _commands_, _React_ offers _hooks_ etc.
 
