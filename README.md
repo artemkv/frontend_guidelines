@@ -1,4 +1,4 @@
-v0.2
+v0.3
 
 Disclaimer: you can treat this document as my personal opinion. You don't have to agree with this, and feel free to completely disregard all I say. I am looking to be right, my aim is to share.
 
@@ -13,6 +13,7 @@ This document aims at providing a background for reasoning about the frontend ap
 When building a frontend application, most of the (technical) complexity lies in **(1)** handling UI component dependencies (as in "this view should update when that button is clicked") and **(2)** reconciling state updates triggered by user actions and business logic.
 
 UI component dependencies usually obey "if and only if" logic:
+
 - Necessary condition: "component `A` should only update when component `B` changes";
 - Sufficient condition: "if component `B` changes, component `A` must get updated".
 
@@ -20,22 +21,21 @@ If you don't respect these rules, you will either have UI that updates too often
 
 To make things worse, you have multiple sources of updates: application business logic and user actions. In a poorly designed frontend application or framework you may encounter the situation when data flows in both directions: from app business logic to the UI component and from the UI component to the app business logic, which easily gets out of control and breeds bugs related to inconsistent state.
 
-
 # Principles
 
 Solving the challenges of complex frontend applications relies on following principles:
+
 - Unidirectional flow of data
 - Pure views
-- Global, consistent, and immutable state
-- Pure state update function
+- Global, consistent, and immutable state (aka _Model_)
+- Pure state update function (aka _Reducer_, aka _Dispatcher_)
 - Isolated and well controlled side effects
 
 The good place to start is [Elm architecture](https://guide.elm-lang.org/architecture/). _Elm_ is a purely functional language that resembles _Haskell_ and the architecture it promotes emerges from its purely functional nature.
 
-_Elm_ architecture is not just a fun reading. It has fundamental practical and historical importance, as it has inspired libraries like _Redux_ (see [Redux Essentials](https://redux.js.org/tutorials/essentials/part-1-overview-concepts)) and, consequently, state management in _React_ (see [Managing State](https://react.dev/learn/managing-state)), _Angular_ (see [@ngrx/store](https://ngrx.io/guide/store)) and others. In my view, it is "The architecture" for the frontend app and the idea behind the modern frontend libraries.
+_Elm_ architecture is not just a fun reading. It has fundamental practical and historical importance, as it has inspired libraries like _Flux_ ([React and Flux: Building Applications with a Unidirectional Data Flow](https://youtu.be/i__969noyAM?si=FaQOBg7dHC7wzIbl), [Hacker Way: Rethinking Web App Development at Facebook](https://youtu.be/nYkdrAPrdcw?si=Z525QDkB8XQRweQn&t=610)), _Redux_ (see [Redux Essentials](https://redux.js.org/tutorials/essentials/part-1-overview-concepts)) and, consequently, state management in _React_ (see [Managing State](https://react.dev/learn/managing-state)), _Angular_ (see [@ngrx/store](https://ngrx.io/guide/store)) and others. In my view, it is "The architecture" for the frontend app and the idea behind the modern frontend libraries.
 
 You don't have to follow the _Elm_ architecture strictly, as it can sometimes feel too rigid, but it's important to know when you deviate from this architecture, and be able to articulate the advantages and drawbacks of an alternative solution. Similarly, it is important to know how the specific techniques (e.g. hooks) fit into this architecture.
-
 
 ## Unidirectional flow of data
 
@@ -56,7 +56,6 @@ While this looks like a loop, it is actually a spiral (which you can unwind alon
 
 We will now look at all the parts in more details.
 
-
 ## Pure views
 
 Also known as _presentational components_ or _pure components_.
@@ -67,16 +66,17 @@ Example with _React_:
 
 ```js
 function Welcome(props) {
-  return <div>
-    <h1>Hello, {props.name}</h1>
-    <button onclick={props.clicked_hello}>
-        Say hello
-    </button>
-  </div>;
+  return (
+    <div>
+      <h1>Hello, {props.name}</h1>
+      <button onclick={props.clicked_hello}>Say hello</button>
+    </div>
+  );
 }
 ```
 
 Making views out of pure functions brings many advantages:
+
 - Easy to unit-test, if you desire to do so (allows input-output test, although, personally, I would probably not find these tests very useful);
 - Easy to understand, contains minimal logic (ideally, no logic at all);
 - Easy to develop in isolation, e.g. using tools like _Storybook_ (only requires providing inputs for rendering);
@@ -90,14 +90,14 @@ In react, use [`memo`](https://react.dev/reference/react/memo) to cache componen
 
 If, for any reason, you feel that you need to push the state management on a component itself (see below on state), do not mix everything in one place: create a purely representational component (no state management, only markup) and a container component (manages state but has no markup).
 
-
 ## Global, consistent, and immutable state
 
-Also known as *model*.
+Also known as _model_.
 
-The state can be hosted in the _Redux store_ or simply in the root app component (using [state hook](https://react.dev/reference/react/useState), in case of _React_). It doesn't really matter (and you could write your own Redux library in about half an hour).
+The state can be hosted in the _Redux store_ or simply in the root app component (using [reducer hook](https://react.dev/reference/react/useReducer) or even simply a [state hook](https://react.dev/reference/react/useState), in case of _React_). It doesn't really matter (and you could write your own Redux library in about half an hour).
 
 What is important:
+
 - State is the most important part of your application. The model of the state represents your application business domain and provides the [**Ubiquitous Language**](https://martinfowler.com/bliki/UbiquitousLanguage.html), i.e. the common vocabulary for the team;
 - State must be always consistent, so you should design it in a way that renders it impossible to construct an illegal/inconsistent state (e.g. no null or undefined properties);
 - State must be immutable. The only way to update the state of the application should be by creating a new state from the old state; this, in turn, would require re-executing views to generate new DOM, and update the parts of DOM that have changed, this is a task of a runtime;
@@ -117,15 +117,15 @@ Many developers would come up with something as follows:
 
 ```ts
 enum DataLoadingState {
-    Loading,
-    Success,
-    Error
+  Loading,
+  Success,
+  Error,
 }
 
 interface ComponentState {
-    loadingState: DataLoadingState,
-    result?: Data;
-    error?: string;
+  loadingState: DataLoadingState;
+  result?: Data;
+  error?: string;
 }
 ```
 
@@ -141,9 +141,9 @@ Fortunately, there is a simple solution that relies on discriminated unions:
 
 ```ts
 enum DataLoadingState {
-    Loading,
-    Success,
-    Error
+  Loading,
+  Success,
+  Error,
 }
 
 interface Loading {
@@ -160,7 +160,7 @@ interface Sucess {
   result: Data;
 }
 
-type ComponentState = Loading | Error | Sucess
+type ComponentState = Loading | Error | Sucess;
 ```
 
 Notice that we have completely eliminated all the issues mentioned above.
@@ -179,7 +179,13 @@ Having the complete application state in a single place has a great advantage. I
 
 This is why React is suggesting [lifting state up](https://react.dev/learn/sharing-state-between-components). I find this confusing, as in my opinion, it suggests that the local state should be a default.
 
-I would rather advocate for having **all the state on top by default**, and exceptionally pushing state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application; the rule of thumb: if you can imagine it as a separate frame, then it can be a new state root).
+I would rather advocate for having **all the state on top by default**, and exceptionally pushing the state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application; the rule of thumb: if you can imagine it as a separate frame, then it can be a new state root; see also: ephemeral state).
+
+#### Ephemeral state
+
+Some of your component state can be seen as ephemeral, i.e. truly belonging only a single component. Examples of such state are: text, as you are typing it inside of a form input field, until "submit" button is clicked. Another example: grid view sorting. Keeping this state at the top sometimes does feel unnecessary.
+
+If you truly believe you have encountered one of those situations, it's up to you to make the decision to exceptionally push the state down.
 
 ### Note on state complexity
 
@@ -189,36 +195,44 @@ However, I would argue that, if you follow the approach explained in "Always con
 
 In other words, your state tree will never get more complex than a UI at any single point in time during the application execution, which is the right level of complexity.
 
+### Note on prop drilling
+
+Prop drilling problem is not unique to UI components, it often manifests itself in the OOD. I personally see many advantages in passing every piece of data explicitly, as this makes dependencies very obvious. But I certainly understand how this can become tedious.
+
+Before you resort to using some techniques like [React Context](https://react.dev/learn/passing-data-deeply-with-context), I do encourage you to see if there is no other way to handle the situation. Does it make sense to have so many nested levels of components? Can you group properties frequently passed together on the single object, to make it easier to do?
+
+I think it's OK to use React Context to pass the things like current locale, current user etc. However, it also think it's OK to group those properties on a Context interface and allow it to drill.
+
 ### Anti-corruption layer
 
 This is simple: basically, don't throw the data you don't control directly on your UI components, especially when retrieving the data from the schema-less databases (e.g. _DynamoDB_).
 
 This means: process the data before putting it into the global store, namely:
+
 - Validate the data. All the fields that are mandatory have to be present and in the correct format;
 - Sanitize the data. For example, if some of the properties are optional, they might be or not present in the JSON, you could make sure the property is always there, but maybe set to null;
 - Impute the missing values: use app defaults, when applicable;
 - Convert into app internal format (e.g. parse datetime from string to a number);
 - Versioning: convert the records from any version to a recent canonical format.
 
-
 ## Pure state update function (aka Reducer)
 
 Views may interact with the user, and report the events up. The exact mechanism is irrelevant (callback props in _React_, _actions_ in _Redux_, _messages_ in _Elm_ etc.). You can make events bubble through components or dispatch events from low-level components directly to _update_ function using _dispatch_ function.
 
 What is important:
+
 - The event should be self-contained, i.e. carry all the relevant information, such as id of an element selected, text entered etc.;
 - Events flow from the views up;
 - Events should be processed in a single place, usually called _reducer_ or _update_, a pure function that accepts the event/action + current state and returns the new state;
 - All the data dependencies should be handled here (update field `A` when field `B` changes), keeping all your application logic consolidated in a single place.
 
 Hints:
-- Only update what needs to be updated, to avoid re-rendering (i.e. don't update refs, you can use libraries that provide "lens", like `ramda`, see `R.lensPath`, `R.view` and `R.set`) TODO: example
 
+- Only update what needs to be updated, to avoid re-rendering (i.e. don't update refs, you can use libraries that provide "lens", like `ramda`, see `R.lensPath`, `R.view` and `R.set`) TODO: example
 
 ### Business logic
 
 It might be quite an obvious thing, but don't put the actual business logic literally inside the reducer. Have a library of functions that do calculations and call those functions. Keep the complexity of a reducer to the minimum (should basically be a large flat `switch`).
-
 
 ## Isolated and well controlled side effects
 
@@ -232,9 +246,9 @@ TODO: examples etc.
 
 My advice is to keep all the effects on the top of the application and avoid handling effects (i.e. using _React hooks_) in the components (keep components pure, as discussed above).
 
-
 ## Exceptions
 
-- TODO: low-level micro-updates (text box, every character typed by the user triggers update)
+###
+
 - TODO: animations
 - TODO: state selectors (e.g. Angular NgRx)
