@@ -1,4 +1,4 @@
-v0.3
+v0.3.1
 
 Disclaimer: you can treat this document as my personal opinion. You don't have to agree with this, and feel free to completely disregard all I say. I am looking to be right, my aim is to share.
 
@@ -75,6 +75,12 @@ function Welcome(props) {
 }
 ```
 
+React guidelines, in fact, promote [Keeping Components Pure](https://react.dev/learn/keeping-components-pure), and the [StrictMode](https://react.dev/reference/react/StrictMode) is designed to detect impure functions.
+
+From the [React documentation, Fixing bugs found by double rendering in development](https://react.dev/reference/react/StrictMode#fixing-bugs-found-by-double-rendering-in-development):
+
+> React assumes that every component you write is a pure function. This means that React components you write must always return the same JSX given the same inputs (props, state, and context).
+
 Making views out of pure functions brings many advantages:
 
 - Easy to unit-test, if you desire to do so (allows input-output test, although, personally, I would probably not find these tests very useful);
@@ -107,7 +113,7 @@ What is important:
 
 One of the most important properties of the state is to be always consistent. I highly recommend [Domain-Driven Design](https://www.amazon.com/gp/product/0321125215) by Eric Evans.
 
-(TODO: If I remember correctly, this talk is also great: [The life of a file](https://www.youtube.com/watch?v=XpDsk374LDE))
+The goal is to [Make Impossible States Impossible](https://www.youtube.com/watch?v=IcgmSRJHu_8). There is a fantastic series of articles [The "Designing with types" series](https://fsharpforfunandprofit.com/series/designing-with-types/) that explores the topic in the context of F# language. Finally, there is also a nice talk from Elm conference [The life of a file](https://www.youtube.com/watch?v=XpDsk374LDE).
 
 Let's consider an example.
 
