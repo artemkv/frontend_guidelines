@@ -1,4 +1,4 @@
-v0.3.1
+v0.3.2
 
 Disclaimer: you can treat this document as my personal opinion. You don't have to agree with this, and feel free to completely disregard all I say. I am looking to be right, my aim is to share.
 
@@ -28,14 +28,14 @@ Solving the challenges of complex frontend applications relies on following prin
 - Unidirectional flow of data
 - Pure views
 - Global, consistent, and immutable state (aka _Model_)
-- Pure state update function (aka _Reducer_, aka _Dispatcher_)
+- Pure state update function (aka _Reducer_)
 - Isolated and well controlled side effects
 
 The good place to start is [Elm architecture](https://guide.elm-lang.org/architecture/). _Elm_ is a purely functional language that resembles _Haskell_ and the architecture it promotes emerges from its purely functional nature.
 
-_Elm_ architecture is not just a fun reading. It has fundamental practical and historical importance, as it has inspired libraries like _Flux_ ([React and Flux: Building Applications with a Unidirectional Data Flow](https://youtu.be/i__969noyAM?si=FaQOBg7dHC7wzIbl), [Hacker Way: Rethinking Web App Development at Facebook](https://youtu.be/nYkdrAPrdcw?si=Z525QDkB8XQRweQn&t=610)), _Redux_ (see [Redux Essentials](https://redux.js.org/tutorials/essentials/part-1-overview-concepts)) and, consequently, state management in _React_ (see [Managing State](https://react.dev/learn/managing-state)), _Angular_ (see [@ngrx/store](https://ngrx.io/guide/store)) and others. In my view, it is "The architecture" for the frontend app and the idea behind the modern frontend libraries.
+_Elm_ architecture is not just a fun reading. It has fundamental practical and historical importance, as it has inspired libraries like _Flux_ ([React and Flux: Building Applications with a Unidirectional Data Flow](https://youtu.be/i__969noyAM?si=FaQOBg7dHC7wzIbl), [Hacker Way: Rethinking Web App Development at Facebook](https://youtu.be/nYkdrAPrdcw?si=Z525QDkB8XQRweQn&t=610)), _Redux_ (see [Redux Essentials](https://redux.js.org/tutorials/essentials/part-1-overview-concepts)) and, consequently, state management in _React_ (see [Managing State](https://react.dev/learn/managing-state)), _Angular_ (see [@ngrx/store](https://ngrx.io/guide/store)) and others. In my view, it is "The architecture" for the frontend app and the idea behind the modern frontend libraries. A lot of differences boil down to how different frameworks name things and where they plug effects (and how they pervert the pure Elm architecture).
 
-You don't have to follow the _Elm_ architecture strictly, as it can sometimes feel too rigid, but it's important to know when you deviate from this architecture, and be able to articulate the advantages and drawbacks of an alternative solution. Similarly, it is important to know how the specific techniques (e.g. hooks) fit into this architecture.
+You don't have to follow the _Elm_ architecture strictly, as it can sometimes feel too rigid, but it's important to know when you deviate from this architecture, and be able to articulate the advantages and drawbacks of an alternative solution. Similarly, it is important to know how the specific techniques (e.g. hooks, state selectors) fit (or don't) into this architecture.
 
 ## Unidirectional flow of data
 
@@ -47,7 +47,7 @@ Current State -> View -> Events -> Update -> New State
 
 - The **state** is the model of your app;
 - This state flows into the **views**;
-- The views can trigger **events**;
+- The views can trigger **events** (aka _actions_, or _messages_);
 - The events bubble to the **update function**;
 - The update produces the **new state**;
 - The new state flows into **new views** (that need to be re-rendered).
@@ -88,9 +88,22 @@ Making views out of pure functions brings many advantages:
 - Easy to develop in isolation, e.g. using tools like _Storybook_ (only requires providing inputs for rendering);
 - Allows results to be cached as long as the inputs remain the same.
 
-The last statement is really important in order to avoid unnecessary re-rendering. In case of _Elm_, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached.
+The last statement is really important in order to avoid unnecessary re-rendering. In case of _Elm_, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached (although React is doing some optimizations internally, to avoid unnecessary re-renderings).
 
-In react, use [`memo`](https://react.dev/reference/react/memo) to cache components. You don't have to wrap every component in `memo`, just the ones that are heavy.
+In React, use [`memo`](https://react.dev/reference/react/memo) to cache components. You don't have to wrap every component in `memo`, just the ones that are heavy.
+
+```js
+import { memo } from "react";
+
+const WelcomeMemoed = memo(function Welcome(props) {
+  return (
+    <div>
+      <h1>Hello, {props.name}</h1>
+      <button onclick={props.clicked_hello}>Say hello</button>
+    </div>
+  );
+});
+```
 
 ### Container components
 
