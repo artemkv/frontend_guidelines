@@ -1,4 +1,4 @@
-v0.3.2
+v0.3.3
 
 Disclaimer: you can treat this document as my personal opinion. You don't have to agree with this, and feel free to completely disregard all I say. I am looking to be right, my aim is to share.
 
@@ -6,7 +6,7 @@ Disclaimer: you can treat this document as my personal opinion. You don't have t
 
 Building complex front-end applications is a complex task. Fortunately, there has been a lot of advancements in this area and many patterns emerged that helped to reduce this complexity, maintenance cost, and, as a result, a number of bugs.
 
-Today, many frontend developers start their journey in a particular framework/library, such as _React_, _Angular_ etc. Working with these frameworks and libraries, they learn library- or framework-specific patterns and practices that, while useful, do not always provide a solid fundamentals for understanding the bigger picture.
+Today, many frontend developers start their journey in a particular framework/library, such as _React_, _Angular_ etc. Working with these frameworks and libraries, they learn library- or framework-specific patterns and practices (e.g. React hooks) that, while useful, do not always provide a solid fundamentals for understanding the bigger picture and underlying principles.
 
 This document aims at providing a background for reasoning about the frontend application architecture in a framework-independent way.
 
@@ -19,11 +19,15 @@ UI component dependencies usually obey "if and only if" logic:
 
 If you don't respect these rules, you will either have UI that updates too often, resulting in flickering and poor UX; or too seldom, resulting in stale, out-of-sync views.
 
-To make things worse, you have multiple sources of updates: application business logic and user actions. In a poorly designed frontend application or framework you may encounter the situation when data flows in both directions: from app business logic to the UI component and from the UI component to the app business logic, which easily gets out of control and breeds bugs related to inconsistent state.
+To make things worse, you have multiple sources of updates: application business logic and user actions. In a poorly designed frontend application or framework you may encounter the situation when data flows in both directions: from app business logic to the UI component and from the UI component to the app business logic, which easily gets out of control and breeds bugs related to inconsistent state. The notorious example is the Facebook messenger app that would show "X unread messages" while there was, in fact, none.
+
+In order to solve this challenges, the declarative approach has emerged and gained a lot of popularity in recent years ("here is my desired state, please update the DOM to match it").
+
+I don't think this is the only way to build frontend applications and you could definitely build a solid application using imperative approach. However, since the modern libraries like React are fundamentally build upon declarative paradigm, I feel it's absolutely vital to understand its core principles. The worst idea, in my opinion, would be to try and combine imperative and declarative approach (e.g. using React components to derive the UI from props while relying on the mental model "component `A` should update the component `B`").
 
 # Principles
 
-Solving the challenges of complex frontend applications relies on following principles:
+Solving the challenges of complex frontend applications (within the declarative paradigm) relies on following principles:
 
 - Unidirectional flow of data
 - Pure views
@@ -90,7 +94,7 @@ Making views out of pure functions brings many advantages:
 
 The last statement is really important in order to avoid unnecessary re-rendering. In case of _Elm_, the purity is ensured by the compiler, so you can always cache the component as long as the inputs stay the same. In case of _TypeScript_ and _React_, you, as a developer, have the responsibility to keep the components pure and to ensure the outputs are cached (although React is doing some optimizations internally, to avoid unnecessary re-renderings).
 
-In React, use [`memo`](https://react.dev/reference/react/memo) to cache components. You don't have to wrap every component in `memo`, just the ones that are heavy.
+In React, use [`memo`](https://react.dev/reference/react/memo) to cache components. The common wisdom is not to wrap every component in `memo`, just the ones that are heavy.
 
 ```js
 import { memo } from "react";
@@ -104,6 +108,8 @@ const WelcomeMemoed = memo(function Welcome(props) {
   );
 });
 ```
+
+However, the React only keep around the most recent value of the input and result, so if you are following the guideline and create pure components, it is totally safe to wrap all of them in `memo` by default.
 
 ### Container components
 
@@ -196,9 +202,11 @@ This is not the case with the approach we are discussing here, where the state i
 
 Having the complete application state in a single place has a great advantage. In many frontend applications, the components are highly dependent. Right now, as I'm typing in the Visual Code editor window, the status bar, a completely separate component, is updating the line length while preview on the right is showing rendered markdown. If we made the text to be stored on a level of an editor component, we would have a hard time keeping the rest of UI in sync.
 
-This is why React is suggesting [lifting state up](https://react.dev/learn/sharing-state-between-components). I find this confusing, as in my opinion, it suggests that the local state should be a default.
+This is why React is suggesting [lifting state up](https://react.dev/learn/sharing-state-between-components). I find this confusing, as in my opinion, it suggests that the local state should be a default. In fact, some React docs (see [memo](https://react.dev/reference/react/memo)) directly says that: _prefer local state and don’t lift state up any further than necessary_.
 
-I would rather advocate for having **all the state on top by default**, and exceptionally pushing the state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application; the rule of thumb: if you can imagine it as a separate frame, then it can be a new state root; see also: ephemeral state).
+Here is where I disagree with React. I would rather advocate for having **all the state on top by default**, and exceptionally pushing the state down, when it's really needed (e.g. when parts of the application UI are truly independent and can be seen as separate application; the rule of thumb: if you can imagine it as a separate frame, then it can be a new state root; see also: _ephemeral state_).
+
+Having a big part of an application state spread across low-level components, with parts of it bubbled up to various levels of the component depth, possibly up to the root, means you completely give up on having a single consistent view on your application state. In fact, you completely lose track of what constitutes your state. And just like a state, there is a good chance in that case that all the business logic of state update is also spread across all components.
 
 #### Ephemeral state
 
@@ -210,17 +218,29 @@ If you truly believe you have encountered one of those situations, it's up to yo
 
 Another argument against having all the state in a single state tree might be a complexity of that tree ("would get too big").
 
-However, I would argue that, if you follow the approach explained in "Always consistent state", your state tree, at any point in time, will only include the properties that are valid and required by the currently displayed UI components.
+However, I would argue that, if you follow the approach explained in _"Always consistent state"_, your state tree, at any point in time, will only include the properties that are valid and required by the currently displayed UI components.
 
 In other words, your state tree will never get more complex than a UI at any single point in time during the application execution, which is the right level of complexity.
 
 ### Note on prop drilling
 
-Prop drilling problem is not unique to UI components, it often manifests itself in the OOD. I personally see many advantages in passing every piece of data explicitly, as this makes dependencies very obvious. But I certainly understand how this can become tedious.
+Prop drilling problem is not unique to UI components, it often manifests itself in the OOD (it is one of the factors, albeit not the most important, behind the idea of DI libraries). I personally see many advantages in passing every piece of data explicitly, as this makes dependencies very obvious. But I certainly understand how this can become tedious.
 
 Before you resort to using some techniques like [React Context](https://react.dev/learn/passing-data-deeply-with-context), I do encourage you to see if there is no other way to handle the situation. Does it make sense to have so many nested levels of components? Can you group properties frequently passed together on the single object, to make it easier to do?
 
 I think it's OK to use React Context to pass the things like current locale, current user etc. However, it also think it's OK to group those properties on a Context interface and allow it to drill.
+
+### Note on reusability
+
+I've seen people advocating against using props as this makes components "less reusable" and more fragile in case of UI refactorings. They would argue in favor of `<TodoItem />` comparing to `<TodoItem item={item} />`.
+
+The idea seem to be that you could move such component anywhere inside the app, and the app would not break, while the component accepting props would require re-wiring those props at the new place, which requires more work. This is all true.
+
+Naturally, the component still needs to get the data somehow, and if you don't use props, this means the component itself needs to be smart enough to go and fetch the required piece of the state from the state store. In practice, it means that seemingly very simple `<TodoItem />` component is actually a monster that has its tentacles reaching out far beyond itself, into the places you are completely unaware of.
+
+And while it's true that you can cut and paste such a component anywhere _inside the app_, I struggle to call it re-use since everything breaks as long as you try to re-use such component in a different context. And the most obvious example would be the context of unit tests. We all have seen the components that require pages of mock setup to be able to test the most primitive logic.
+
+A component that take all of its input from props can be truly re-used anywhere, inside or outside of an app.
 
 ### Anti-corruption layer
 
